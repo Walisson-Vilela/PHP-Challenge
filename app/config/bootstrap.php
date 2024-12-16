@@ -60,14 +60,16 @@ use Cake\Utility\Security;
  * security risks. See https://github.com/josegonzalez/php-dotenv#general-security-information
  * for more information for recommended practices.
 */
-// if (!env('APP_NAME') && file_exists(CONFIG . '.env')) {
-//     $dotenv = new \josegonzalez\Dotenv\Loader([CONFIG . '.env']);
-//     $dotenv->parse()
-//         ->putenv()
-//         ->toEnv()
-//         ->toServer();
-// }
+use Dotenv\Dotenv;
 
+$dotenv = Dotenv::createImmutable(ROOT);
+$dotenv->load();
+
+// Verificação para depurar o carregamento das variáveis de ambiente
+echo 'DB_USERNAME: ' . env('DB_USERNAME') . PHP_EOL;
+echo 'DB_PASSWORD: ' . env('DB_PASSWORD') . PHP_EOL;
+
+Security::setSalt('8773edf3c59a5b17bb0dd5217f4132f4');
 /*
  * Read configuration file and inject configuration into various
  * CakePHP classes.
@@ -169,7 +171,7 @@ ConnectionManager::setConfig(Configure::consume('Datasources'));
 TransportFactory::setConfig(Configure::consume('EmailTransport'));
 Mailer::setConfig(Configure::consume('Email'));
 Log::setConfig(Configure::consume('Log'));
-Security::setSalt(Configure::consume('Security.salt'));
+// Security::setSalt(Configure::consume('Security.salt'));
 
 /*
  * Setup detectors for mobile and tablet.

@@ -74,6 +74,16 @@ return static function (RouteBuilder $routes) {
     });
 
     /*
+     * Define routes for the API.
+     */
+    $routes->scope('/api', function (RouteBuilder $builder) {
+        $builder->setExtensions(['json']);
+        // Example API route
+        $builder->resources('Posts');
+        $builder->fallbacks(DashedRoute::class);
+    });
+
+    /*
      * If you need a different set of middleware or none at all,
      * open new scope and define routes there.
      *
