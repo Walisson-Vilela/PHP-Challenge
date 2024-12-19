@@ -75,8 +75,9 @@ return [
      *   You should treat it as extremely sensitive data.
      */
     'Security' => [
-        'salt' => env('SECURITY_SALT', '8773edf3c59a5b17bb0dd5217f4132f4'),
+        'salt' => env('SECURITY_SALT'),
     ],
+
     /*
      * Apply timestamps with the last modified time to static assets (js, css, images).
      * Will append a querystring parameter containing the time the file was modified.
@@ -280,24 +281,47 @@ return [
      *   E.g set it to 'utf8mb4' in MariaDB and MySQL and 'utf8' for any
      *   other RDBMS.
      */
-'Datasources' => [
-    'default' => [
-        'className' => 'Cake\Database\Connection',
-        'driver' => 'Cake\Database\Driver\Mysql',
-        'persistent' => false,
-        'host' => env('DB_HOST', 'localhost'),
-        'port' => env('DB_PORT', 3306),
-        'username' => env('DB_USERNAME', 'root'),
-        'password' => env('DB_PASSWORD', ''),
-        'database' => env('DB_DATABASE', 'my_app'),
-        'encoding' => 'utf8mb4',
-        'timezone' => 'UTC',
-        'flags' => [],
-        'cacheMetadata' => true,
-        'log' => false,
-    ],
-],
-
+    'Datasources' => [
+        /*
+         * These configurations should contain permanent settings used
+         * by all environments.
+         *
+         * The values in app_local.php will override any values set here
+         * and should be used for local and per-environment configurations.
+         *
+         * Environment variable based configurations can be loaded here or
+         * in app_local.php depending on the applications needs.
+         */
+        'default' => [
+            'className' => Connection::class,
+            'driver' => Mysql::class,
+            'persistent' => false,
+            'timezone' => 'UTC',
+            'host' => env('DB_HOST'),
+            'username' => env('DB_USER'),
+            'password' => env('DB_PASSWORD'),
+            'database' => env('DB_DEFAULT_DATABASE'),
+            'flags' => [],
+            'cacheMetadata' => true,
+            'log' => false,
+            'quoteIdentifiers' => false,
+            'quoteIdentifiers' => false, 'url' => env('DATABASE_URL', null),
+        ],
+        'debug_kit' => [
+            'className' => Connection::class,
+            'driver' => Mysql::class,
+            'persistent' => false,
+            'timezone' => 'UTC',
+            'host' => env('DB_HOST'),
+            'username' => env('DB_USER'),
+            'password' => env('DB_PASSWORD'),
+            'database' => env('DB_DEFAULT_DATABASE'),
+            'flags' => [],
+            'cacheMetadata' => true,
+            'log' => false,
+            'quoteIdentifiers' => false,
+            'quoteIdentifiers' => false, 'url' => env('DATABASE_URL', null),
+        ],
 
         /*
          * The test connection is used during the test suite.
