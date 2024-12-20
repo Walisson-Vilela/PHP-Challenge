@@ -20,26 +20,36 @@ class StoresController extends AppController
     {
         $this->loadComponent('Paginator');
         $stores = $this->Paginator->paginate($this->Stores->find('all')->contain(['Addresses']));
+
         foreach ($stores as $store) {
             if (!empty($store->address)) {
                 $store->address->postal_code_masked = $this->applyPostalCodeMask($store->address->postal_code);
+                unset($store->address->postal_code); // Remover o campo postal_code
             }
         }
-        $this->set(compact('stores'));
-        $this->viewBuilder()->setOption('serialize', ['stores']);
+
+        $response = ['stores' => $stores];
+
+        return $this->response->withType('application/json')
+                              ->withStringBody(json_encode($response));
     }
 
     public function view($id)
     {
         $store = $this->Stores->get($id, ['contain' => ['Addresses']]);
         if (!$store) {
-            throw new NotFoundException(__('Loja nao encontrada'));
+            throw new NotFoundException(__('Store not found'));
         }
+
         if (!empty($store->address)) {
             $store->address->postal_code_masked = $this->applyPostalCodeMask($store->address->postal_code);
+            unset($store->address->postal_code); // Remover o campo postal_code
         }
-        $this->set(compact('store'));
-        $this->viewBuilder()->setOption('serialize', ['store']);
+
+        $response = ['store' => $store];
+
+        return $this->response->withType('application/json')
+                              ->withStringBody(json_encode($response));
     }
 
 
