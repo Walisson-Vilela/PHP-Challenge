@@ -30,14 +30,23 @@ class StoresController extends AppController
         $store = $this->Stores->newEmptyEntity();
         if ($this->request->is('post')) {
             $store = $this->Stores->patchEntity($store, $this->request->getData(), ['associated' => ['Addresses']]);
-            if (!empty($store->address)) {
-                $store->address->foreign_table = 'stores';
+            if (empty($store->address)) {
+                $response = ['message' => 'Erro: O endereco e obrigatorio.', 'errors' => ['address' => 'O endereco e obrigatorio']];
+                return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
+
             if ($this->Stores->save($store)) {
-                $response = ['message' => 'Saved', 'store' => ['id' => $store->id, 'name' => $store->name, 'address' => $store->address]];
+                $response = [
+                    'message' => 'Dados salvos com sucesso!',
+                    'store' => [
+                        'id' => $store->id,
+                        'name' => $store->name,
+                        'address' => $store->address
+                    ]
+                ];
                 return $this->response->withType('application/json')->withStringBody(json_encode($response));
             } else {
-                $response = ['message' => 'The store could not be saved. Please, try again.', 'errors' => $store->getErrors()];
+                $response = ['message' => 'Os dados nao foram salvos, tente novamente', 'errors' => $store->getErrors()];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
         }
@@ -52,10 +61,17 @@ class StoresController extends AppController
                 $store->address->foreign_table = 'stores';
             }
             if ($this->Stores->save($store)) {
-                $response = ['message' => 'Saved', 'store' => ['id' => $store->id, 'name' => $store->name, 'address' => $store->address]];
+                $response = [
+                    'message' => 'Edicao concluida com sucesso',
+                    'store' => [
+                        'id' => $store->id,
+                        'name' => $store->name,
+                        'address' => $store->address
+                    ]
+                ];
                 return $this->response->withType('application/json')->withStringBody(json_encode($response));
             } else {
-                $response = ['message' => 'The store could not be saved. Please, try again.', 'errors' => $store->getErrors()];
+                $response = ['message' => 'A edicao nao foi concluida, tente novamente', 'errors' => $store->getErrors()];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
         }
@@ -69,10 +85,13 @@ class StoresController extends AppController
             throw new NotFoundException(__('Store not found'));
         }
         if ($this->Stores->delete($store)) {
-            $this->Stores->Addresses->deleteAll(['foreign_table' => 'stores', 'foreign_id' => $store->id]);
-            $response = ['message' => __('The store has been deleted.')];
+            $this->Stores->Addresses->deleteAll([
+                'foreign_table' => 'stores',
+                'foreign_id' => $store->id
+            ]);
+            $response = ['message' => __('Dados deletados com sucesso')];
         } else {
-            $response = ['message' => __('The store could not be deleted. Please, try again.')];
+            $response = ['message' => __('Os dados nao foram deletados, por favor tente novamente')];
         }
         return $this->response->withType('application/json')->withStringBody(json_encode($response));
     }

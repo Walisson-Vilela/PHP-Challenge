@@ -29,11 +29,11 @@ class StoresTable extends Table
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->notEmptyString('name', 'Name is required')
+            ->notEmptyString('name', 'O nome e obrigatorio')
             ->add('name', 'unique', [
                 'rule' => 'validateUnique',
                 'provider' => 'table',
-                'message' => 'Name is already in use'
+                'message' => 'Nome em uso'
             ]);
 
         return $validator;
