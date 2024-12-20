@@ -7,10 +7,24 @@ use Cake\Http\Exception\NotFoundException;
 
 class StoresController extends AppController
 {
+
+    private function applyPostalCodeMask($postalCode)
+    {
+        if (preg_match('/^[0-9]{8}$/', $postalCode)) {
+            return substr($postalCode, 0, 5) . '-' . substr($postalCode, 5, 3);
+        }
+        return $postalCode;
+    }
+
     public function index()
     {
         $this->loadComponent('Paginator');
         $stores = $this->Paginator->paginate($this->Stores->find('all')->contain(['Addresses']));
+        foreach ($stores as $store) {
+            if (!empty($store->address)) {
+                $store->address->postal_code_masked = $this->applyPostalCodeMask($store->address->postal_code);
+            }
+        }
         $this->set(compact('stores'));
         $this->viewBuilder()->setOption('serialize', ['stores']);
     }
@@ -19,11 +33,15 @@ class StoresController extends AppController
     {
         $store = $this->Stores->get($id, ['contain' => ['Addresses']]);
         if (!$store) {
-            throw new NotFoundException(__('Store not found'));
+            throw new NotFoundException(__('Loja nao encontrada'));
+        }
+        if (!empty($store->address)) {
+            $store->address->postal_code_masked = $this->applyPostalCodeMask($store->address->postal_code);
         }
         $this->set(compact('store'));
         $this->viewBuilder()->setOption('serialize', ['store']);
     }
+
 
     public function add()
     {
@@ -51,7 +69,7 @@ class StoresController extends AppController
                 ];
                 return $this->response->withType('application/json')->withStringBody(json_encode($response));
             } else {
-                $response = ['message' => 'Os dados não foram salvos, tente novamente', 'errors' => $store->getErrors()];
+                $response = ['message' => 'Os dados nao foram salvos, tente novamente', 'errors' => $store->getErrors()];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
         }
@@ -59,15 +77,33 @@ class StoresController extends AppController
 
     public function edit($id = null)
     {
-        $store = $this->Stores->get($id, ['contain' => ['Addresses'],]);
+        if (is_null($id)) {
+            throw new NotFoundException(__('Invalid store ID'));
+        }
+
+        $store = $this->Stores->get($id, [
+            'contain' => ['Addresses'],
+        ]);
+
         if ($this->request->is(['patch', 'post', 'put'])) {
-            $store = $this->Stores->patchEntity($store, $this->request->getData(), ['associated' => ['Addresses']]);
+            $data = $this->request->getData();
+
+            // Excluir o endereço atual se houver
             if (!empty($store->address)) {
-                $store->address->foreign_table = 'stores';
+                $this->Stores->Addresses->delete($store->address);
             }
+
+            // Criar novo endereço a partir dos dados recebidos
+            if (!empty($data['address'])) {
+                $data['address']['foreign_table'] = 'stores';
+                $data['address']['foreign_id'] = $store->id;
+            }
+
+            $store = $this->Stores->patchEntity($store, $data, ['associated' => ['Addresses']]);
+
             if ($this->Stores->save($store)) {
                 $response = [
-                    'message' => 'Edicao concluida com sucesso',
+                    'message' => 'Dados salvos com sucesso!',
                     'store' => [
                         'id' => $store->id,
                         'name' => $store->name,
@@ -76,11 +112,15 @@ class StoresController extends AppController
                 ];
                 return $this->response->withType('application/json')->withStringBody(json_encode($response));
             } else {
-                $response = ['message' => 'A edicao nao foi concluida, tente novamente', 'errors' => $store->getErrors()];
+                $response = [
+                    'message' => 'Os dados nao foram salvos, tente novamente',
+                    'errors' => $store->getErrors()
+                ];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
         }
     }
+
 
     public function delete($id)
     {

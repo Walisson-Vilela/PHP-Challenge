@@ -28,12 +28,12 @@ class AddressesTable extends Table
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->notEmptyString('postal_code', 'Postal code is required')
+            ->notEmptyString('postal_code', 'O CEP e obrigatorio')
             ->add('postal_code', 'validFormat', [
                 'rule' => ['custom', '/^[0-9]{8}$/'],
-                'message' => 'Postal code must be 8 digits'
+                'message' => 'O CEP deve constar 8 digitos obrigatorios'
             ])
-            ->notEmptyString('street_number', 'Street number is required')
+            ->notEmptyString('street_number', 'O numero e obrigatorio')
             ->allowEmptyString('complement');
 
         return $validator;
