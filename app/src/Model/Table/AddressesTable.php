@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Model\Table;
@@ -39,7 +40,7 @@ class AddressesTable extends Table
         return $validator;
     }
 
-    public function beforeSave($event, $entity, $options)
+    public function beforeSave($entity)
     {
         if ($entity->isNew() || $entity->isDirty('postal_code')) {
             $address = $this->fetchAddressFromApi($entity->postal_code);
@@ -85,8 +86,6 @@ class AddressesTable extends Table
                 ];
             }
         }
-
-        // CEP não encontrado em nenhuma das APIs
         return null;
     }
 }

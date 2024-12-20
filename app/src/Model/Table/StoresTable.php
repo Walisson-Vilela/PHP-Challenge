@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Model\Table;
@@ -6,7 +7,6 @@ namespace App\Model\Table;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 use Cake\ORM\RulesChecker;
-use Cake\ORM\Rule\IsUnique;
 
 class StoresTable extends Table
 {
@@ -18,11 +18,11 @@ class StoresTable extends Table
         $this->setDisplayField('name');
         $this->setPrimaryKey('id');
 
-        // Definir a associação com Addresses
+        // Definir a associação com Endereço
         $this->hasOne('Addresses', [
             'foreignKey' => 'foreign_id',
             'conditions' => ['Addresses.foreign_table' => 'stores'],
-            'dependent' => true, // Define que quando um Store for excluído, o Address associado também será
+            'dependent' => true, // Define que quando uma Loja for excluída, o Address associado também será
         ]);
     }
 
@@ -45,7 +45,7 @@ class StoresTable extends Table
         return $rules;
     }
 
-    public function beforeSave($event, $entity, $options)
+    public function beforeSave($entity)
     {
         if ($entity->isNew() || $entity->isDirty('name')) {
             $existing = $this->find()

@@ -24,7 +24,7 @@ class StoresController extends AppController
         foreach ($stores as $store) {
             if (!empty($store->address)) {
                 $store->address->postal_code_masked = $this->applyPostalCodeMask($store->address->postal_code);
-                unset($store->address->postal_code); // Remover o campo postal_code
+                unset($store->address->postal_code);
             }
         }
 
@@ -43,7 +43,7 @@ class StoresController extends AppController
 
         if (!empty($store->address)) {
             $store->address->postal_code_masked = $this->applyPostalCodeMask($store->address->postal_code);
-            unset($store->address->postal_code); // Remover o campo postal_code
+            unset($store->address->postal_code);
         }
 
         $response = ['store' => $store];
@@ -59,13 +59,11 @@ class StoresController extends AppController
         if ($this->request->is('post')) {
             $store = $this->Stores->patchEntity($store, $this->request->getData(), ['associated' => ['Addresses']]);
 
-            // Verificar se o endereço está presente
             if (empty($store->address)) {
                 $response = ['message' => 'Erro: O endereço é obrigatório.', 'errors' => ['address' => 'O endereço é obrigatório']];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
 
-            // Definir 'foreign_table' para o endereço
             $store->address->foreign_table = 'stores';
 
             if ($this->Stores->save($store)) {
