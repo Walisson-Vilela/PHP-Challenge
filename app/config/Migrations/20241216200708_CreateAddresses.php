@@ -5,7 +5,7 @@ use Migrations\AbstractMigration;
 
 class CreateAddresses extends AbstractMigration
 {
-    public function change(): void
+    public function change()
     {
         $table = $this->table('addresses');
         $table->addColumn('foreign_table', 'string', ['limit' => 100, 'null' => false])
@@ -16,9 +16,9 @@ class CreateAddresses extends AbstractMigration
               ->addColumn('sublocality', 'string', ['limit' => 200, 'null' => false])
               ->addColumn('street', 'string', ['limit' => 200, 'null' => false])
               ->addColumn('street_number', 'string', ['limit' => 200, 'null' => false])
-              ->addColumn('complement', 'string', ['limit' => 200, 'default' => '', 'null' => false])
-              ->addPrimaryKey('id')
+              ->addColumn('complement', 'string', ['limit' => 200, 'null' => true, 'default' => ''])
               ->addIndex(['foreign_table', 'foreign_id'], ['unique' => true])
               ->create();
     }
+
 }

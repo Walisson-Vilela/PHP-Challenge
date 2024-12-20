@@ -5,6 +5,7 @@ namespace App\Model\Table;
 
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Http\Client;
 
 class AddressesTable extends Table
@@ -12,26 +13,80 @@ class AddressesTable extends Table
     public function initialize(array $config): void
     {
         parent::initialize($config);
+
         $this->setTable('addresses');
+        $this->setDisplayField('id');
         $this->setPrimaryKey('id');
+
+        // Definir a associação com Stores
+        $this->belongsTo('Stores', [
+            'foreignKey' => 'foreign_id',
+            'conditions' => ['Addresses.foreign_table' => 'stores'],
+        ]);
     }
 
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->scalar('postal_code')
-            ->maxLength('postal_code', 8)
             ->notEmptyString('postal_code', 'Postal code is required')
-            ->add('postal_code', 'valid', [
-                'rule' => function($value, $context) {
-                    return preg_match('/^[0-9]{8}$/', $value);
-                },
-                'message' => 'Invalid postal code'
+            ->add('postal_code', 'validFormat', [
+                'rule' => ['custom', '/^[0-9]{8}$/'],
+                'message' => 'Postal code must be 8 digits'
             ])
-            ->scalar('street_number')
-            ->maxLength('street_number', 200)
-            ->notEmptyString('street_number', 'Street number is required');
+            ->notEmptyString('street_number', 'Street number is required')
+            ->allowEmptyString('complement');
 
         return $validator;
+    }
+
+    public function beforeSave($event, $entity, $options)
+    {
+        if ($entity->isNew() || $entity->isDirty('postal_code')) {
+            $address = $this->fetchAddressFromApi($entity->postal_code);
+            if ($address) {
+                $entity->state = $address['state'];
+                $entity->city = $address['city'];
+                $entity->sublocality = $address['sublocality'];
+                $entity->street = $address['street'];
+            } else {
+                throw new RecordNotFoundException('CEP não encontrado');
+            }
+        }
+    }
+
+    private function fetchAddressFromApi($postalCode)
+    {
+        $client = new Client();
+
+        // Primeira tentativa: API República Virtual
+        $response = $client->get('http://cep.republicavirtual.com.br/web_cep.php', ['cep' => $postalCode, 'formato' => 'json']);
+        if ($response->isOk()) {
+            $data = $response->getJson();
+            if ($data['resultado'] !== '0') {
+                return [
+                    'state' => $data['uf'],
+                    'city' => $data['cidade'],
+                    'sublocality' => $data['bairro'],
+                    'street' => $data['logradouro']
+                ];
+            }
+        }
+
+        // Segunda tentativa: API Via CEP
+        $response = $client->get('https://viacep.com.br/ws/' . $postalCode . '/json/');
+        if ($response->isOk()) {
+            $data = $response->getJson();
+            if (empty($data['erro'])) {
+                return [
+                    'state' => $data['uf'],
+                    'city' => $data['localidade'],
+                    'sublocality' => $data['bairro'],
+                    'street' => $data['logradouro']
+                ];
+            }
+        }
+
+        // CEP não encontrado em nenhuma das APIs
+        return null;
     }
 }

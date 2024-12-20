@@ -1,127 +1,79 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Controller;
 
+use App\Controller\AppController;
 use Cake\Http\Exception\NotFoundException;
-use Cake\Http\Exception\BadRequestException;
-use Cake\Event\EventInterface;
 
 class StoresController extends AppController
 {
-    public function initialize(): void
-    {
-        parent::initialize();
-        $this->loadComponent('RequestHandler');
-        $this->RequestHandler->renderAs($this, 'json');
-        $this->response = $this->response->withType('application/json');
-        $this->loadModel('Addresses');
-    }
-
-    public function fetchAddressDetails($postal_code)
-    {
-        $client = new \Cake\Http\Client();
-        $response = $client->get('https://republicavirtual.com.br/web_cep.php', ['cep' => $postal_code, 'formato' => 'json']);
-        if ($response->isOk() && $response->getJson()) {
-            return $response->getJson();
-        } else {
-            $response = $client->get('https://viacep.com.br/ws/' . $postal_code . '/json/');
-            if ($response->isOk() && $response->getJson()) {
-                return $response->getJson();
-            }
-        }
-        throw new BadRequestException('CEP não encontrado');
-    }
-
     public function index()
     {
-        $stores = $this->Stores->find('all', [
-            'contain' => ['Addresses']
-        ])->toArray();
+        $this->loadComponent('Paginator');
+        $stores = $this->Paginator->paginate($this->Stores->find('all')->contain(['Addresses']));
         $this->set(compact('stores'));
         $this->viewBuilder()->setOption('serialize', ['stores']);
     }
 
-    public function view($id = null)
+    public function view($id)
     {
-        try {
-            $store = $this->Stores->get($id, [
-                'contain' => ['Addresses']
-            ]);
-            $this->set(compact('store'));
-            $this->viewBuilder()->setOption('serialize', ['store']);
-        } catch (\Exception $e) {
+        $store = $this->Stores->get($id, ['contain' => ['Addresses']]);
+        if (!$store) {
             throw new NotFoundException(__('Store not found'));
         }
+        $this->set(compact('store'));
+        $this->viewBuilder()->setOption('serialize', ['store']);
     }
 
     public function add()
     {
         $store = $this->Stores->newEmptyEntity();
         if ($this->request->is('post')) {
-            $data = $this->request->getData();
-
-            // Verificar e completar os detalhes do endereço
-            $addressDetails = $this->fetchAddressDetails($data['address']['postal_code']);
-            $data['address'] = array_merge($data['address'], $addressDetails);
-
-            $store = $this->Stores->patchEntity($store, $data, ['associated' => ['Addresses']]);
-            if ($this->Stores->save($store)) {
-                $message = 'Saved';
-            } else {
-                $message = 'Error';
+            $store = $this->Stores->patchEntity($store, $this->request->getData(), ['associated' => ['Addresses']]);
+            if (!empty($store->address)) {
+                $store->address->foreign_table = 'stores';
             }
-            $this->set([
-                'message' => $message,
-                'store' => $store,
-            ]);
-            $this->viewBuilder()->setOption('serialize', ['message', 'store']);
+            if ($this->Stores->save($store)) {
+                $response = ['message' => 'Saved', 'store' => ['id' => $store->id, 'name' => $store->name, 'address' => $store->address]];
+                return $this->response->withType('application/json')->withStringBody(json_encode($response));
+            } else {
+                $response = ['message' => 'The store could not be saved. Please, try again.', 'errors' => $store->getErrors()];
+                return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
+            }
         }
     }
 
     public function edit($id = null)
     {
-        $store = $this->Stores->get($id, [
-            'contain' => ['Addresses']
-        ]);
+        $store = $this->Stores->get($id, ['contain' => ['Addresses'],]);
         if ($this->request->is(['patch', 'post', 'put'])) {
-            // Apagar o endereço antigo
-            $this->Addresses->deleteAll(['foreign_id' => $id, 'foreign_table' => 'Stores']);
-
-            // Verificar e completar os detalhes do endereço
-            $data = $this->request->getData();
-            $addressDetails = $this->fetchAddressDetails($data['address']['postal_code']);
-            $data['address'] = array_merge($data['address'], $addressDetails);
-
-            // Adicionar um novo endereço e atualizar a loja
-            $store = $this->Stores->patchEntity($store, $data, ['associated' => ['Addresses']]);
-            if ($this->Stores->save($store)) {
-                $message = 'Updated';
-            } else {
-                $message = 'Error';
+            $store = $this->Stores->patchEntity($store, $this->request->getData(), ['associated' => ['Addresses']]);
+            if (!empty($store->address)) {
+                $store->address->foreign_table = 'stores';
             }
-            $this->set([
-                'message' => $message,
-                'store' => $store,
-            ]);
-            $this->viewBuilder()->setOption('serialize', ['message', 'store']);
+            if ($this->Stores->save($store)) {
+                $response = ['message' => 'Saved', 'store' => ['id' => $store->id, 'name' => $store->name, 'address' => $store->address]];
+                return $this->response->withType('application/json')->withStringBody(json_encode($response));
+            } else {
+                $response = ['message' => 'The store could not be saved. Please, try again.', 'errors' => $store->getErrors()];
+                return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
+            }
         }
     }
 
-    public function delete($id = null)
+    public function delete($id)
     {
-        $this->request->allowMethod(['post', 'delete']);
-        $store = $this->Stores->get($id, ['contain' => ['Addresses']]);
-        $message = 'Deleted';
-        if ($this->Stores->delete($store)) {
-            $this->Addresses->deleteAll(['foreign_id' => $id, 'foreign_table' => 'Stores']);
-        } else {
-            $message = 'Error';
+        $this->request->allowMethod(['delete', 'post']);
+        $store = $this->Stores->get($id);
+        if (!$store) {
+            throw new NotFoundException(__('Store not found'));
         }
-        $this->set([
-            'message' => $message,
-        ]);
-        $this->viewBuilder()->setOption('serialize', ['message']);
+        if ($this->Stores->delete($store)) {
+            $this->Stores->Addresses->deleteAll(['foreign_table' => 'stores', 'foreign_id' => $store->id]);
+            $response = ['message' => __('The store has been deleted.')];
+        } else {
+            $response = ['message' => __('The store could not be deleted. Please, try again.')];
+        }
+        return $this->response->withType('application/json')->withStringBody(json_encode($response));
     }
 }

@@ -13,28 +13,48 @@ class StoresTable extends Table
     public function initialize(array $config): void
     {
         parent::initialize($config);
+
         $this->setTable('stores');
+        $this->setDisplayField('name');
         $this->setPrimaryKey('id');
+
+        // Definir a associação com Addresses
         $this->hasOne('Addresses', [
             'foreignKey' => 'foreign_id',
-            'conditions' => ['Addresses.foreign_table' => 'Stores'],
+            'conditions' => ['Addresses.foreign_table' => 'stores'],
+            'dependent' => true, // Define que quando um Store for excluído, o Address associado também será
         ]);
     }
 
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->scalar('name')
-            ->maxLength('name', 200)
             ->notEmptyString('name', 'Name is required')
-            ->add('name', 'unique', ['rule' => 'validateUnique', 'provider' => 'table', 'message' => 'Nome em uso']);
+            ->add('name', 'unique', [
+                'rule' => 'validateUnique',
+                'provider' => 'table',
+                'message' => 'Name is already in use'
+            ]);
 
         return $validator;
     }
 
     public function buildRules(RulesChecker $rules): RulesChecker
     {
-        $rules->add($rules->isUnique(['name'], 'Nome em uso'));
+        $rules->add($rules->isUnique(['name'], 'Name is already in use'));
         return $rules;
+    }
+
+    public function beforeSave($event, $entity, $options)
+    {
+        if ($entity->isNew() || $entity->isDirty('name')) {
+            $existing = $this->find()
+                ->where(['name' => $entity->name])
+                ->first();
+
+            if ($existing) {
+                throw new \Exception('Name is already in use');
+            }
+        }
     }
 }
