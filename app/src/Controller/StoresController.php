@@ -30,10 +30,15 @@ class StoresController extends AppController
         $store = $this->Stores->newEmptyEntity();
         if ($this->request->is('post')) {
             $store = $this->Stores->patchEntity($store, $this->request->getData(), ['associated' => ['Addresses']]);
+
+            // Verificar se o endereço está presente
             if (empty($store->address)) {
-                $response = ['message' => 'Erro: O endereco e obrigatorio.', 'errors' => ['address' => 'O endereco e obrigatorio']];
+                $response = ['message' => 'Erro: O endereço é obrigatório.', 'errors' => ['address' => 'O endereço é obrigatório']];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
+
+            // Definir 'foreign_table' para o endereço
+            $store->address->foreign_table = 'stores';
 
             if ($this->Stores->save($store)) {
                 $response = [
@@ -46,7 +51,7 @@ class StoresController extends AppController
                 ];
                 return $this->response->withType('application/json')->withStringBody(json_encode($response));
             } else {
-                $response = ['message' => 'Os dados nao foram salvos, tente novamente', 'errors' => $store->getErrors()];
+                $response = ['message' => 'Os dados não foram salvos, tente novamente', 'errors' => $store->getErrors()];
                 return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode($response));
             }
         }
